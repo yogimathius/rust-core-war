@@ -113,6 +113,10 @@ impl Parser {
 
             let instruction = self.parse_instruction()?;
             instructions.push(instruction);
+
+            if !self.is_at_end() && self.peek().token_type == TokenType::Newline {
+                self.advance();
+            }
         }
 
         Ok(instructions)
@@ -175,11 +179,11 @@ impl Parser {
                 "direct".to_string(),
                 token.value.trim_start_matches('%').to_string(),
             ),
-            TokenType::Indirect => ("indirect".to_string(), token.value),
             TokenType::DirectLabel => (
                 "label".to_string(),
                 token.value.trim_start_matches("%:").to_string(),
             ),
+            TokenType::Indirect => ("indirect".to_string(), token.value),
             TokenType::LabelRef => (
                 "label".to_string(),
                 token.value.trim_start_matches(':').to_string(),
