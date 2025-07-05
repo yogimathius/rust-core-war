@@ -1,0 +1,117 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Rust Core War Development Guidelines
+
+## 🎯 Project Overview
+This is a modern Core War implementation in Rust, featuring a virtual machine, assembler, and terminal visualizer. All development should follow strict Rust best practices and maintain the project's high code quality standards.
+
+## 🦀 Rust Standards
+
+### Edition & Tooling
+- **ALWAYS** use Rust 2024 edition (`edition = "2024"`) unless specific tooling incompatibilities require 2021
+- Use the latest stable crate versions
+- Add dependencies using `cargo add <crate>[@version]` instead of manually editing [Cargo.toml](mdc:Cargo.toml)
+
+### Code Quality Requirements
+- Write idiomatic, safe Rust code
+- Prioritize **readability and maintainability** over premature optimization
+- Use `Result<T, E>` instead of panics in library code
+- Use `thiserror` for custom error types where appropriate
+- Keep modules small, organized, and logically named
+
+## 🧪 Test-Driven Development
+
+### Testing Requirements
+- Follow **Test-Driven Development (TDD)** where practical
+- Write failing unit tests BEFORE implementing functionality
+- Place tests alongside code or in `/tests` directory
+- Run `cargo test` before every commit
+- Ensure comprehensive test coverage for core functionality
+
+## 📦 Dependencies & Error Handling
+
+### Crate Selection
+- Use only well-maintained, popular crates
+- Document reasoning for any non-obvious crate choices
+- Group related dependencies logically in Cargo.toml with comments
+
+### Error Handling
+- Always prefer `Result<T, E>` over panics in library code
+- Use `thiserror` for structured error types
+- Provide clear error messages that help users understand issues
+
+## 📚 Documentation Standards
+
+### Required Documentation
+- Add `///` doc comments for ALL public functions, structs, enums, and modules
+- Update README.md when adding new modules or major features
+- Keep documentation current with code changes
+- Include usage examples in doc comments where helpful
+
+## 🚀 Commit & Workflow Standards
+
+### Commit Message Format
+```
+feat(vm): implement circular memory addressing
+test(assembler): add label resolution tests
+fix(ui): correct memory grid colors
+docs(readme): update installation instructions
+```
+
+### Pre-Push Checklist
+Run these commands before pushing ANY code:
+```bash
+cargo fmt
+cargo clippy
+cargo test
+```
+
+### Commit Guidelines
+- Keep commits focused: one feature or fix per commit
+- Write clear, descriptive commit messages
+- Ensure all tests pass before committing
+
+## 🖥️ CLI & User Experience
+
+### CLI Requirements
+- Ensure CLI tools (`corewar`, `asm`) provide helpful error messages
+- Implement comprehensive `--help` information
+- Make default behaviors safe and predictable
+- Follow Unix CLI conventions
+
+## 📂 Project Organization
+
+### Module Structure
+- Keep modules organized and small
+- Avoid monolithic code structures
+- Use descriptive module and file names
+- Follow Rust's module system conventions
+
+## 🔧 Development Notes
+
+### Code Review Guidelines
+- Be verbose in reasoning when suggesting code changes
+- Annotate non-trivial code sections with comments explaining intent
+- When uncertain, propose multiple options with pros & cons
+- Respect the project's phased plan and current scope
+- Do not implement speculative features unless explicitly requested
+
+### Key Project Files
+- Development guidelines: [CLAUDE.md](mdc:CLAUDE.md)
+- Implementation details: [IMPLEMENTATION_GUIDE.md](mdc:IMPLEMENTATION_GUIDE.md)
+- Project specifications: [SPECS.md](mdc:SPECS.md)
+
+## ⚠️ Critical Requirements
+
+1. **Safety First**: No unsafe code unless absolutely necessary and well-documented
+2. **Test Coverage**: All public APIs must have corresponding tests
+3. **Error Handling**: Never use `.unwrap()` or `.expect()` in library code without clear justification
+4. **Documentation**: Public APIs without documentation will be rejected
+5. **Performance**: Profile before optimizing; correctness before performance
+
+---
+
+**Remember**: These guidelines ensure code quality, maintainability, and team consistency. Follow them strictly for all contributions to the Rust Core War project.
