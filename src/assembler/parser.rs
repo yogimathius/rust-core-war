@@ -13,6 +13,8 @@ pub struct Parser {
     tokens: Vec<Token>,
     /// Current position in token stream
     current: usize,
+    /// Pending label for the next instruction
+    pending_label: Option<String>,
 }
 
 impl Parser {
@@ -24,7 +26,11 @@ impl Parser {
     /// # Returns
     /// A new Parser instance
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            pending_label: None,
+        }
     }
 
     /// Parse the tokens into an AST
@@ -99,6 +105,7 @@ impl Parser {
         let mut instructions = Vec::new();
 
         while !self.is_at_end() {
+            let current_position = self.current;
             self.skip_newlines();
 
             if self.is_at_end() {
@@ -111,11 +118,20 @@ impl Parser {
                 continue;
             }
 
-            let instruction = self.parse_instruction()?;
-            instructions.push(instruction);
+            if let Some(instruction) = self.parse_instruction()? {
+                instructions.push(instruction);
+            }
 
             if !self.is_at_end() && self.peek().token_type == TokenType::Newline {
                 self.advance();
+            }
+
+            // Guard against infinite loops
+            if self.current == current_position {
+                // If we haven't advanced, force advance to prevent infinite loop
+                if !self.is_at_end() {
+                    self.advance();
+                }
             }
         }
 
@@ -123,22 +139,29 @@ impl Parser {
     }
 
     /// Parse a single instruction
-    fn parse_instruction(&mut self) -> Result<InstructionNode> {
-        let mut label = None;
+    fn parse_instruction(&mut self) -> Result<Option<InstructionNode>> {
+        let mut label = self.pending_label.take(); // Take any pending label
         let line_number = self.peek().line;
 
         // Check for optional label
         if self.peek().token_type == TokenType::Label {
             let label_token = self.advance();
             label = Some(label_token.value.trim_end_matches(':').to_string());
+
+            // Skip newlines after label
+            self.skip_newlines();
         }
 
-        // Parse instruction mnemonic
+        // If there's no instruction after the label, save the label for next instruction
         if self.peek().token_type != TokenType::Instruction {
-            return Err(CoreWarError::assembler(format!(
-                "Expected instruction at line {}",
-                self.peek().line
-            )));
+            if label.is_some() {
+                // We have a label but no instruction follows, save the label for next instruction
+                self.pending_label = label;
+                return Ok(None);
+            } else {
+                // Not a label and not an instruction, skip this token
+                return Ok(None);
+            }
         }
 
         let mnemonic = self.advance().value;
@@ -161,12 +184,12 @@ impl Parser {
             parameters.push(parameter);
         }
 
-        Ok(InstructionNode {
+        Ok(Some(InstructionNode {
             label,
             mnemonic,
             parameters,
             line_number,
-        })
+        }))
     }
 
     /// Parse a single parameter
