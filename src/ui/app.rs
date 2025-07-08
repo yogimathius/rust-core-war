@@ -112,8 +112,17 @@ impl<'a> App<'a> {
             "Cycles: {}\nPaused: {}\n\nChampions:\n",
             self.engine.get_stats().cycle, self.paused
         );
+
+        let mut champion_memory_usage: std::collections::HashMap<u8, usize> = std::collections::HashMap::new();
+        for i in 0..self.engine.memory().size() {
+            if let Some(owner_id) = self.engine.memory().get_owner(i) {
+                *champion_memory_usage.entry(owner_id).or_insert(0) += 1;
+            }
+        }
+
         for champ in self.engine.champions() {
-            stats.push_str(&format!("- {} (ID: {})\n", champ.name, champ.id));
+            let usage = champion_memory_usage.get(&champ.id).unwrap_or(&0);
+            stats.push_str(&format!("- {} (ID: {}): {} bytes\n", champ.name, champ.id, usage));
         }
         stats.push_str(&format!("Speed: {}x\n", self.speed));
         stats.push_str(&format!("Debug: {}\n", self.debug_mode));
