@@ -52,8 +52,8 @@ impl Parser {
         let mut name = String::new();
         let mut comment = String::new();
 
-        // Skip any initial newlines
-        self.skip_newlines();
+        // Skip any initial newlines and comments
+        self.skip_newlines_and_comments();
 
         // Parse header directives
         while !self.is_at_end() && self.peek().token_type == TokenType::Directive {
@@ -88,7 +88,7 @@ impl Parser {
                 }
             }
 
-            self.skip_newlines();
+            self.skip_newlines_and_comments();
         }
 
         if name.is_empty() {
@@ -225,6 +225,16 @@ impl Parser {
     /// Skip newline tokens
     fn skip_newlines(&mut self) {
         while !self.is_at_end() && self.peek().token_type == TokenType::Newline {
+            self.advance();
+        }
+    }
+
+    /// Skip newline and comment tokens
+    fn skip_newlines_and_comments(&mut self) {
+        while !self.is_at_end()
+            && (self.peek().token_type == TokenType::Newline
+                || self.peek().token_type == TokenType::Comment)
+        {
             self.advance();
         }
     }

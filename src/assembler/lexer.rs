@@ -133,7 +133,7 @@ impl Lexer {
                 Some((TokenType::Newline, "\n".to_string()))
             }
             ',' => Some((TokenType::Comma, ",".to_string())),
-            '#' => {
+            '#' | ';' => {
                 let comment = self.read_comment();
                 Some((TokenType::Comment, comment))
             }

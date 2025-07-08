@@ -39,6 +39,13 @@ impl Encoder {
         // First pass: build symbol table
         self.build_symbol_table(&ast.instructions)?;
 
+        // Debug: print symbol table
+        println!("[DEBUG] Symbol table: {{");
+        for (label, addr) in &self.symbol_table {
+            println!("    '{}': {}", label, addr);
+        }
+        println!("}}");
+
         // Second pass: generate code
         let code = self.generate_code(&ast.instructions)?;
 
@@ -60,14 +67,15 @@ impl Encoder {
         for instruction in instructions {
             // Add label to symbol table if present
             if let Some(ref label) = instruction.label {
-                if self.symbol_table.contains_key(label) {
+                let normalized_label = label.trim().trim_end_matches(':');
+                if self.symbol_table.contains_key(normalized_label) {
                     return Err(CoreWarError::assembler(format!(
                         "Duplicate label '{}' at line {}",
-                        label, instruction.line_number
+                        normalized_label, instruction.line_number
                     )));
                 }
                 self.symbol_table
-                    .insert(label.clone(), self.current_address);
+                    .insert(normalized_label.to_string(), self.current_address);
             }
 
             // Calculate instruction size
@@ -204,11 +212,12 @@ impl Encoder {
                     Parameter::indirect(value)
                 }
                 "label" => {
+                    let normalized_label = param_node.value.trim().trim_end_matches(':');
                     let label_address =
-                        self.symbol_table.get(&param_node.value).ok_or_else(|| {
+                        self.symbol_table.get(normalized_label).ok_or_else(|| {
                             CoreWarError::assembler(format!(
                                 "Undefined label: {}",
-                                param_node.value
+                                normalized_label
                             ))
                         })?;
                     Parameter::label(*label_address as i32)
