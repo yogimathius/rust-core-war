@@ -2,8 +2,8 @@
 ///
 /// This module defines the individual UI components that make up
 /// the Core War visualization interface.
-use corewar::error::Result;
-use corewar::vm::{Champion, Memory, Process};
+use crate::error::Result;
+use crate::vm::{Champion, Memory, Process};
 
 /// Memory grid component for visualizing VM memory
 #[derive(Debug)]

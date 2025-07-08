@@ -108,3 +108,9 @@ impl CoreWarError {
         }
     }
 }
+
+impl From<CoreWarError> for std::io::Error {
+    fn from(err: CoreWarError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, err.to_string())
+    }
+}

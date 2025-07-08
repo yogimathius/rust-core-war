@@ -7,7 +7,7 @@ use corewar::{Assembler, GameConfig, GameEngine};
 use log::{error, info};
 use std::path::PathBuf;
 use std::process;
-mod ui;
+use corewar::ui::app;
 
 fn main() {
     // Initialize logging
@@ -184,10 +184,7 @@ fn run_battle(matches: &clap::ArgMatches) -> anyhow::Result<()> {
     // Run the battle
     if visual {
         // Minimal demo: launch terminal UI with real VM data
-        let memory = engine.memory();
-        let champions = engine.champions();
-        let processes = engine.processes();
-        crate::ui::app::run_terminal_ui_with_vm(memory, champions, processes)?;
+        corewar::ui::app::run_terminal_ui_with_vm(&mut engine)?;
         return Ok(());
     } else {
         run_text_mode(&mut engine)?;

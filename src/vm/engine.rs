@@ -5,7 +5,7 @@ use crate::constants::{MAX_CHAMPIONS, MEMORY_SIZE};
 /// of the Core War virtual machine to run complete battles.
 use crate::error::{CoreWarError, Result};
 use crate::vm::{Champion, ChampionLoader, Memory, Scheduler};
-use log::{debug, info, warn};
+use log::{debug, info};
 use std::time::{Duration, Instant};
 
 /// Game engine configuration
@@ -184,40 +184,33 @@ impl GameEngine {
         self.start()?;
 
         while self.state.running && !self.is_finished() {
-            if !self.state.paused {
-                self.execute_cycle()?;
+            self.tick()?;
 
-                // Apply speed control
-                if self.config.speed > 0 {
-                    let delay = Duration::from_millis(1000 / self.config.speed as u64);
-                    std::thread::sleep(delay);
-                }
-            }
-
-            // Check for max cycles limit
-            if self.config.max_cycles > 0 && self.state.cycle >= self.config.max_cycles {
-                warn!("Reached maximum cycles limit: {}", self.config.max_cycles);
-                self.state.running = false;
-                break;
+            // Apply speed control
+            if self.config.speed > 0 {
+                let delay = Duration::from_millis(1000 / self.config.speed as u64);
+                std::thread::sleep(delay);
             }
         }
 
         self.determine_winner()
     }
 
-    /// Execute a single cycle
-    pub fn execute_cycle(&mut self) -> Result<()> {
+    /// Execute a single game tick (cycle)
+    ///
+    /// # Returns
+    /// `Ok(true)` if the game is still running, `Ok(false)` if it has finished.
+    pub fn tick(&mut self) -> Result<bool> {
         if !self.state.running || self.state.paused {
-            return Ok(());
+            return Ok(self.state.running);
         }
 
         self.state.cycle += 1;
         self.state.last_cycle_time = Instant::now();
 
         // Execute one cycle of the scheduler
-        let should_continue = self
-            .scheduler
-            .execute_cycle(&mut self.memory, &mut self.champions)?;
+        let should_continue =
+            self.scheduler.execute_cycle(&mut self.memory, &mut self.champions)?;
 
         if !should_continue {
             self.state.running = false;
@@ -240,7 +233,7 @@ impl GameEngine {
             );
         }
 
-        Ok(())
+        Ok(self.state.running)
     }
 
     /// Check if the game is finished
@@ -364,6 +357,11 @@ impl GameEngine {
         &self.state
     }
 
+    /// Set the running state of the game
+    pub fn set_running(&mut self, running: bool) {
+        self.state.running = running;
+    }
+
     /// Get scheduler statistics
     pub fn scheduler_stats(&self) -> crate::vm::scheduler::SchedulerStats {
         self.scheduler.get_stats()
@@ -474,10 +472,9 @@ mod tests {
 
         // Execute a few cycles
         for _ in 0..5 {
-            if engine.is_finished() {
+            if !engine.tick().unwrap() {
                 break;
             }
-            engine.execute_cycle().unwrap();
         }
 
         // Should have executed some cycles

@@ -2,8 +2,9 @@
 ///
 /// This module defines the main App struct that manages the state
 /// of the Core War terminal visualization.
-use corewar::error::Result;
-use corewar::vm::{Champion, Memory, Process};
+use crate::error::Result;
+use crate::vm::{Memory, Process};
+use crate::GameEngine;
 use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::Terminal;
@@ -28,11 +29,8 @@ pub struct App<'a> {
     pub selected_address: Option<usize>,
     /// Current view mode
     pub view_mode: ViewMode,
-    /// Number of cycles executed
-    pub cycles: u32,
-    pub memory: &'a Memory,
-    pub champions: &'a [Champion],
-    pub processes: Vec<&'a Process>,
+    /// Reference to the game engine
+    pub engine: &'a mut GameEngine,
 }
 
 /// Different view modes for the UI
@@ -50,7 +48,7 @@ pub enum ViewMode {
 
 impl<'a> App<'a> {
     /// Create a new application instance
-    pub fn new(memory: &'a Memory, champions: &'a [Champion], processes: Vec<&'a Process>) -> Self {
+    pub fn new(engine: &'a mut GameEngine) -> Self {
         Self {
             should_quit: false,
             paused: false,
@@ -58,10 +56,7 @@ impl<'a> App<'a> {
             debug_mode: false,
             selected_address: None,
             view_mode: ViewMode::Normal,
-            cycles: 0,
-            memory,
-            champions,
-            processes,
+            engine,
         }
     }
 
@@ -74,14 +69,10 @@ impl<'a> App<'a> {
     ///
     /// # Returns
     /// `Ok(())` if successful, error otherwise
-    pub fn update(
-        &mut self,
-        _memory: &Memory,
-        _processes: &[Process],
-        _champions: &[Champion],
-    ) -> Result<()> {
-        // TODO: Handle input events and update application state
-        // This is a placeholder implementation
+    pub fn update(&mut self) -> Result<()> {
+        if !self.paused {
+            self.engine.tick()?;
+        }
         Ok(())
     }
 
@@ -96,12 +87,41 @@ impl<'a> App<'a> {
     /// `Ok(())` if successful, error otherwise
     pub fn render(
         &self,
-        _memory: &Memory,
-        _processes: &[Process],
-        _champions: &[Champion],
+        frame: &mut ratatui::Frame,
     ) -> Result<()> {
-        // TODO: Render the UI using ratatui
-        // This is a placeholder implementation
+        let grid_width = 32;
+        let grid_height = 192;
+
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+            .split(frame.size());
+
+        // Render memory grid
+        let mem_lines = render_memory_grid(self.engine.memory(), &self.engine.processes(), grid_width, grid_height);
+        let mem_text = mem_lines
+            .iter()
+            .map(|(line, _)| line.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let memory = Paragraph::new(mem_text)
+            .block(Block::default().borders(Borders::ALL).title("Memory"));
+        frame.render_widget(memory, chunks[0]);
+
+        // Stats/dashboard
+        let mut stats = format!(
+            "Cycles: {}\nPaused: {}\n\nChampions:\n",
+            self.engine.get_stats().cycle, self.paused
+        );
+        for champ in self.engine.champions() {
+            stats.push_str(&format!("- {} (ID: {})\n", champ.name, champ.id));
+        }
+        stats.push_str(&format!("Speed: {}x\n", self.speed));
+        stats.push_str(&format!("Debug: {}\n", self.debug_mode));
+        stats.push_str("\nPress <space> to pause/resume\nPress q to quit\nPress + to increase speed\nPress - to decrease speed\nPress d to toggle debug\nPress 1 for Normal view");
+        let stats =
+            Paragraph::new(stats).block(Block::default().borders(Borders::ALL).title("Stats"));
+        frame.render_widget(stats, chunks[1]);
         Ok(())
     }
 
@@ -212,52 +232,19 @@ fn render_memory_grid(
 }
 
 pub fn run_terminal_ui_with_vm(
-    memory: &Memory,
-    champions: &[Champion],
-    processes: Vec<&Process>,
+    engine: &mut GameEngine,
 ) -> io::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     let backend = CrosstermBackend::new(&mut stdout);
     let mut terminal = Terminal::new(backend)?;
-    let mut app = App::new(memory, champions, processes);
+    let mut app = App::new(engine);
     let tick_rate = Duration::from_millis(50);
     let mut last_tick = Instant::now();
 
-    // Grid size (adjust for your terminal)
-    let grid_width = 32;
-    let grid_height = 192;
-
     loop {
         terminal.draw(|f| {
-            let chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
-                .split(f.size());
-
-            // Render memory grid
-            let mem_lines = render_memory_grid(app.memory, &app.processes, grid_width, grid_height);
-            let mem_text = mem_lines
-                .iter()
-                .map(|(line, _)| line.as_str())
-                .collect::<Vec<_>>()
-                .join("\n");
-            let memory = Paragraph::new(mem_text)
-                .block(Block::default().borders(Borders::ALL).title("Memory"));
-            f.render_widget(memory, chunks[0]);
-
-            // Stats/dashboard
-            let mut stats = format!(
-                "Cycles: {}\nPaused: {}\n\nChampions:\n",
-                app.cycles, app.paused
-            );
-            for champ in app.champions {
-                stats.push_str(&format!("- {} (ID: {})\n", champ.name, champ.id));
-            }
-            stats.push_str("\nPress <space> to pause/resume\nPress q to quit");
-            let stats =
-                Paragraph::new(stats).block(Block::default().borders(Borders::ALL).title("Stats"));
-            f.render_widget(stats, chunks[1]);
+            app.render(f).unwrap();
         })?;
 
         // Input handling
@@ -271,7 +258,19 @@ pub fn run_terminal_ui_with_vm(
                         app.quit();
                     }
                     KeyCode::Char(' ') => {
-                        app.paused = !app.paused;
+                        app.toggle_pause();
+                    }
+                    KeyCode::Char('+') => {
+                        app.increase_speed();
+                    }
+                    KeyCode::Char('-') => {
+                        app.decrease_speed();
+                    }
+                    KeyCode::Char('d') => {
+                        app.toggle_debug();
+                    }
+                    KeyCode::Char('1') => {
+                        app.set_view_mode(ViewMode::Normal);
                     }
                     _ => {}
                 }
@@ -279,7 +278,7 @@ pub fn run_terminal_ui_with_vm(
         }
         if last_tick.elapsed() >= tick_rate {
             if !app.paused {
-                app.cycles += 1;
+                app.update()?;
             }
             last_tick = Instant::now();
         }
@@ -297,8 +296,8 @@ mod tests {
 
     #[test]
     fn test_app_creation() {
-        let memory = Memory::new();
-        let app = App::new(&memory, &[], Vec::new());
+        let mut engine = GameEngine::new(Default::default());
+        let app = App::new(&mut engine);
         assert!(!app.should_quit);
         assert!(!app.paused);
         assert_eq!(app.speed, 1);
@@ -308,8 +307,8 @@ mod tests {
 
     #[test]
     fn test_app_controls() {
-        let memory = Memory::new();
-        let mut app = App::new(&memory, &[], Vec::new());
+        let mut engine = GameEngine::new(Default::default());
+        let mut app = App::new(&mut engine);
 
         // Test pause toggle
         app.toggle_pause();
@@ -336,8 +335,8 @@ mod tests {
 
     #[test]
     fn test_address_selection() {
-        let memory = Memory::new();
-        let mut app = App::new(&memory, &[], Vec::new());
+        let mut engine = GameEngine::new(Default::default());
+        let mut app = App::new(&mut engine);
 
         assert_eq!(app.selected_address, None);
 
@@ -346,5 +345,22 @@ mod tests {
 
         app.clear_selection();
         assert_eq!(app.selected_address, None);
+    }
+
+    #[test]
+    fn test_app_update_calls_engine_tick() {
+        let mut engine = GameEngine::new(Default::default());
+        engine.set_running(true); // Manually set running to true for the test
+        let initial_cycles = engine.get_stats().cycle;
+        let mut app = App::new(&mut engine);
+
+        // Ensure tick is called when not paused
+        app.update().unwrap();
+        assert_eq!(app.engine.get_stats().cycle, initial_cycles + 1);
+
+        // Ensure tick is not called when paused
+        app.paused = true;
+        app.update().unwrap();
+        assert_eq!(app.engine.get_stats().cycle, initial_cycles + 1);
     }
 }
