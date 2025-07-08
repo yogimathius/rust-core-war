@@ -233,6 +233,12 @@ impl GameEngine {
             );
         }
 
+        // Apply speed control
+        if self.config.speed > 0 {
+            let delay = Duration::from_millis(1000 / self.config.speed as u64);
+            std::thread::sleep(delay);
+        }
+
         Ok(self.state.running)
     }
 

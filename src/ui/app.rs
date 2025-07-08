@@ -14,7 +14,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use std::io::{self};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Main application state
 pub struct App<'a> {
@@ -282,8 +282,6 @@ pub fn run_terminal_ui_with_vm(
     let backend = CrosstermBackend::new(&mut stdout);
     let mut terminal = Terminal::new(backend)?;
     let mut app = App::new(engine);
-    let tick_rate = Duration::from_millis(50);
-    let mut last_tick = Instant::now();
 
     loop {
         terminal.draw(|f| {
@@ -291,10 +289,7 @@ pub fn run_terminal_ui_with_vm(
         })?;
 
         // Input handling
-        let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
-        if event::poll(timeout)? {
+        if event::poll(Duration::from_millis(0))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => {
@@ -335,11 +330,8 @@ pub fn run_terminal_ui_with_vm(
                 }
             }
         }
-        if last_tick.elapsed() >= tick_rate {
-            if !app.paused {
-                app.update()?;
-            }
-            last_tick = Instant::now();
+        if !app.paused {
+            app.update()?;
         }
         if app.should_quit {
             break;
