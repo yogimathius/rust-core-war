@@ -97,7 +97,7 @@
 
 🎯 _Goal: Add a rich terminal UI for immersive gameplay._
 
-🟡 **In Progress — Starting Now**
+✅ **Completed**
 
 - Memory grid:
 
