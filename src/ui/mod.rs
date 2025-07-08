@@ -11,7 +11,7 @@ pub use app::App;
 pub use components::{Controls, Dashboard, MemoryGrid};
 pub use input::InputHandler;
 
-use crate::error::Result;
+use corewar::error::Result;
 
 /// Initialize the terminal UI system
 ///
@@ -46,9 +46,9 @@ pub fn cleanup() -> Result<()> {
 /// # Returns
 /// `Ok(())` when the UI exits normally, or an error if something goes wrong
 pub fn run_ui(
-    memory: &crate::vm::Memory,
-    processes: &[crate::vm::Process],
-    champions: &[crate::vm::Champion],
+    memory: &corewar::vm::Memory,
+    processes: &[corewar::vm::Process],
+    champions: &[corewar::vm::Champion],
 ) -> Result<()> {
     // TODO: Implement the main UI loop
     // This is a placeholder implementation

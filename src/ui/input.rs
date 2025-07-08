@@ -2,7 +2,7 @@
 ///
 /// This module handles keyboard and mouse input events for the
 /// Core War visualization interface.
-use crate::error::Result;
+use corewar::error::Result;
 
 /// Input event types
 #[derive(Debug, Clone, PartialEq, Eq)]

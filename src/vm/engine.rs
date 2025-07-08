@@ -197,6 +197,7 @@ impl GameEngine {
             // Check for max cycles limit
             if self.config.max_cycles > 0 && self.state.cycle >= self.config.max_cycles {
                 warn!("Reached maximum cycles limit: {}", self.config.max_cycles);
+                self.state.running = false;
                 break;
             }
         }
@@ -366,6 +367,11 @@ impl GameEngine {
     /// Get scheduler statistics
     pub fn scheduler_stats(&self) -> crate::vm::scheduler::SchedulerStats {
         self.scheduler.get_stats()
+    }
+
+    /// Get a list of all active processes (for UI)
+    pub fn processes(&self) -> Vec<&crate::vm::Process> {
+        self.scheduler.processes()
     }
 }
 

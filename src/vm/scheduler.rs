@@ -229,6 +229,11 @@ impl Scheduler {
             total_live_count: self.total_live_count,
         }
     }
+
+    /// Get all active processes (for UI)
+    pub fn processes(&self) -> Vec<&Process> {
+        self.processes.iter().collect()
+    }
 }
 
 impl Default for Scheduler {

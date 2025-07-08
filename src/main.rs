@@ -7,6 +7,7 @@ use corewar::{Assembler, GameConfig, GameEngine};
 use log::{error, info};
 use std::path::PathBuf;
 use std::process;
+mod ui;
 
 fn main() {
     // Initialize logging
@@ -182,10 +183,12 @@ fn run_battle(matches: &clap::ArgMatches) -> anyhow::Result<()> {
 
     // Run the battle
     if visual {
-        // TODO: Implement visual mode (Phase 4)
-        info!("Visual mode requested but not yet implemented");
-        info!("Running in text mode instead");
-        run_text_mode(&mut engine)?;
+        // Minimal demo: launch terminal UI with real VM data
+        let memory = engine.memory();
+        let champions = engine.champions();
+        let processes = engine.processes();
+        crate::ui::app::run_terminal_ui_with_vm(memory, champions, processes)?;
+        return Ok(());
     } else {
         run_text_mode(&mut engine)?;
     }
