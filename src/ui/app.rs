@@ -30,6 +30,8 @@ pub struct App<'a> {
     pub selected_address: Option<usize>,
     /// Current view mode
     pub view_mode: ViewMode,
+    /// Currently selected process ID for detailed view
+    pub selected_process_id: Option<u32>,
     /// Reference to the game engine
     pub engine: &'a mut GameEngine,
 }
@@ -57,6 +59,7 @@ impl<'a> App<'a> {
             debug_mode: false,
             selected_address: None,
             view_mode: ViewMode::Normal,
+            selected_process_id: None,
             engine,
         }
     }
@@ -114,7 +117,19 @@ impl<'a> App<'a> {
         }
         stats.push_str(&format!("Speed: {}x\n", self.speed));
         stats.push_str(&format!("Debug: {}\n", self.debug_mode));
-        stats.push_str("\nPress <space> to pause/resume\nPress q to quit\nPress + to increase speed\nPress - to decrease speed\nPress d to toggle debug\nPress 1 for Normal view\nPress s to step (when paused)");
+        stats.push_str("\nPress <space> to pause/resume\nPress q to quit\nPress + to increase speed\nPress - to decrease speed\nPress d to toggle debug\nPress 1 for Normal view\nPress s to step (when paused)\nPress p to cycle processes");
+
+        if let Some(selected_id) = self.selected_process_id {
+            if let Some(process) = self.engine.processes().iter().find(|p| p.id == selected_id) {
+                stats.push_str(&format!("\nSelected Process {}:\n", process.id));
+                stats.push_str(&format!("  PC: 0x{:04X}\n", process.pc));
+                stats.push_str(&format!("  Carry: {}\n", process.carry));
+                stats.push_str("  Registers:\n");
+                for i in 0..16 {
+                    stats.push_str(&format!("    r{:<2}: {:<10}\n", i + 1, process.registers[i]));
+                }
+            }
+        }
         let stats =
             Paragraph::new(stats).block(Block::default().borders(Borders::ALL).title("Stats"));
         frame.render_widget(stats, chunks[1]);
@@ -276,6 +291,19 @@ pub fn run_terminal_ui_with_vm(
                     }
                     KeyCode::Char('s') => {
                         app.step()?;
+                    }
+                    KeyCode::Char('p') => {
+                        // Cycle through processes
+                        let processes = app.engine.processes();
+                        if processes.is_empty() {
+                            app.selected_process_id = None;
+                        } else {
+                            let current_idx = app.selected_process_id
+                                .and_then(|id| processes.iter().position(|p| p.id == id))
+                                .unwrap_or(processes.len() - 1);
+                            let next_idx = (current_idx + 1) % processes.len();
+                            app.selected_process_id = Some(processes[next_idx].id);
+                        }
                     }
                     _ => {}
                 }
