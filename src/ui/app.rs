@@ -10,7 +10,8 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::Color;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use std::io::{self};
 use std::time::{Duration, Instant};
@@ -99,12 +100,7 @@ impl<'a> App<'a> {
 
         // Render memory grid
         let mem_lines = render_memory_grid(self.engine.memory(), &self.engine.processes(), grid_width, grid_height);
-        let mem_text = mem_lines
-            .iter()
-            .map(|(line, _)| line.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
-        let memory = Paragraph::new(mem_text)
+        let memory = Paragraph::new(mem_lines)
             .block(Block::default().borders(Borders::ALL).title("Memory"));
         frame.render_widget(memory, chunks[0]);
 
@@ -118,7 +114,7 @@ impl<'a> App<'a> {
         }
         stats.push_str(&format!("Speed: {}x\n", self.speed));
         stats.push_str(&format!("Debug: {}\n", self.debug_mode));
-        stats.push_str("\nPress <space> to pause/resume\nPress q to quit\nPress + to increase speed\nPress - to decrease speed\nPress d to toggle debug\nPress 1 for Normal view");
+        stats.push_str("\nPress <space> to pause/resume\nPress q to quit\nPress + to increase speed\nPress - to decrease speed\nPress d to toggle debug\nPress 1 for Normal view\nPress s to step (when paused)");
         let stats =
             Paragraph::new(stats).block(Block::default().borders(Borders::ALL).title("Stats"));
         frame.render_widget(stats, chunks[1]);
@@ -168,6 +164,14 @@ impl<'a> App<'a> {
     pub fn quit(&mut self) {
         self.should_quit = true;
     }
+
+    /// Step the simulation by one cycle if paused
+    pub fn step(&mut self) -> Result<()> {
+        if self.paused {
+            self.engine.tick()?;
+        }
+        Ok(())
+    }
 }
 
 impl Default for App<'_> {
@@ -193,7 +197,7 @@ fn render_memory_grid(
     processes: &[&Process],
     width: usize,
     height: usize,
-) -> Vec<(String, Color)> {
+) -> Vec<Line<'static>> {
     let mem_size = memory.size();
     let _total_cells = width * height;
     let mut lines = Vec::new();
@@ -202,33 +206,31 @@ fn render_memory_grid(
         pc_map[process.pc % mem_size] = Some(process.champion_id);
     }
     for row in 0..height {
-        let mut line = String::new();
-        let mut colors = Vec::new();
+        let mut spans = Vec::new();
         for col in 0..width {
             let idx = row * width + col;
             if idx >= mem_size {
-                line.push(' ');
-                colors.push(Color::Reset);
+                spans.push(Span::raw("   "));
                 continue;
             }
             let owner = memory.get_owner(idx);
             let is_pc = pc_map[idx].is_some();
             let color = if is_pc {
-                Color::White
+                Color::LightCyan // Brighter color for PC
             } else {
                 champion_color(owner)
             };
             let byte = memory.read_byte(idx);
-            line.push_str(&format!("{:02X} ", byte));
-            colors.push(color);
+            let style = if is_pc {
+                Style::default().fg(color).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(color)
+            };
+            spans.push(Span::styled(format!("{:02X} ", byte), style));
         }
-        lines.push((line, colors));
+        lines.push(Line::from(spans));
     }
-    // Convert to Vec<(String, Color)> for ratatui rendering
     lines
-        .into_iter()
-        .map(|(line, colors)| (line, colors.get(0).cloned().unwrap_or(Color::Reset)))
-        .collect()
 }
 
 pub fn run_terminal_ui_with_vm(
@@ -271,6 +273,9 @@ pub fn run_terminal_ui_with_vm(
                     }
                     KeyCode::Char('1') => {
                         app.set_view_mode(ViewMode::Normal);
+                    }
+                    KeyCode::Char('s') => {
+                        app.step()?;
                     }
                     _ => {}
                 }
