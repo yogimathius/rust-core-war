@@ -4,7 +4,7 @@
 
 🎯 _Goal: Build the functional virtual machine (VM) core and process engine._
 
-✅ Implement:
+✅ **Completed**
 
 - Virtual Machine memory:
 
@@ -41,7 +41,7 @@
 
 🎯 _Goal: Create a Redcode-to-bytecode assembler._
 
-✅ Implement:
+✅ **Completed**
 
 - Lexical analyzer:
 
@@ -73,7 +73,7 @@
 
 🎯 _Goal: Complete the game logic, rules, and basic output._
 
-✅ Implement:
+✅ **Completed**
 
 - Full game loop:
 
@@ -97,7 +97,7 @@
 
 🎯 _Goal: Add a rich terminal UI for immersive gameplay._
 
-✅ Implement:
+🟡 **In Progress — Starting Now**
 
 - Memory grid:
 
@@ -129,7 +129,7 @@
 
 🎯 _Goal: Refine UX, optimize performance, and finalize documentation._
 
-✅ Implement:
+⬜ **Not Started**
 
 - Testing:
 
