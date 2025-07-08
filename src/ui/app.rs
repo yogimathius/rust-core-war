@@ -217,9 +217,15 @@ fn render_memory_grid(
     let _total_cells = width * height;
     let mut lines = Vec::new();
     let mut pc_map = vec![None; mem_size];
+    let mut trail_map: Vec<Option<u8>> = vec![None; mem_size];
+
     for process in processes {
         pc_map[process.pc % mem_size] = Some(process.champion_id);
+        for &trail_pc in &process.trail {
+            trail_map[trail_pc % mem_size] = Some(process.champion_id);
+        }
     }
+
     for row in 0..height {
         let mut spans = Vec::new();
         for col in 0..width {
@@ -230,8 +236,19 @@ fn render_memory_grid(
             }
             let owner = memory.get_owner(idx);
             let is_pc = pc_map[idx].is_some();
+            let is_trail = trail_map[idx].is_some();
+
             let color = if is_pc {
                 Color::LightCyan // Brighter color for PC
+            } else if is_trail {
+                // Lighter shade of champion color for trail
+                match trail_map[idx] {
+                    Some(1) => Color::Rgb(100, 0, 0),
+                    Some(2) => Color::Rgb(0, 0, 100),
+                    Some(3) => Color::Rgb(0, 100, 0),
+                    Some(4) => Color::Rgb(100, 100, 0),
+                    _ => Color::DarkGray,
+                }
             } else {
                 champion_color(owner)
             };

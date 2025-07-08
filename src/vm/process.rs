@@ -29,6 +29,8 @@ pub struct Process {
     pub wait_cycles: u32,
     /// Champion color for visualization
     pub color: ChampionColor,
+    /// Trail of recent PC positions for visualization
+    pub trail: Vec<usize>,
 }
 
 impl Process {
@@ -53,6 +55,7 @@ impl Process {
             alive: true,
             wait_cycles: 0,
             color,
+            trail: vec![pc],
         }
     }
 
@@ -94,6 +97,7 @@ impl Process {
     pub fn advance_pc(&mut self, offset: i32, memory_size: usize) {
         let new_pc = (self.pc as i32 + offset) as usize;
         self.pc = new_pc % memory_size;
+        self.add_to_trail();
     }
 
     /// Set the program counter to a specific address
@@ -103,6 +107,16 @@ impl Process {
     /// * `memory_size` - Size of the memory for modulo arithmetic
     pub fn set_pc(&mut self, address: usize, memory_size: usize) {
         self.pc = address % memory_size;
+        self.add_to_trail();
+    }
+
+    /// Add current PC to the trail, maintaining a fixed size
+    fn add_to_trail(&mut self) {
+        const TRAIL_LENGTH: usize = 10;
+        self.trail.push(self.pc);
+        if self.trail.len() > TRAIL_LENGTH {
+            self.trail.remove(0);
+        }
     }
 
     /// Mark this process as alive (executed live instruction)
