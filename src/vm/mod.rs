@@ -77,4 +77,10 @@ impl Champion {
     pub fn code_size(&self) -> usize {
         self.code.len()
     }
+    
+    /// Set the champion's color (for demo purposes)
+    pub fn with_color(mut self, color: ChampionColor) -> Self {
+        self.color = color;
+        self
+    }
 }

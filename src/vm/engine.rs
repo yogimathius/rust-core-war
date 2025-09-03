@@ -162,6 +162,7 @@ impl GameEngine {
         self.state.running = true;
         self.state.start_time = Instant::now();
         self.state.last_cycle_time = Instant::now();
+        eprintln!("GameEngine::start: self.state.running set to {}", self.state.running);
 
         info!(
             "Starting Core War battle with {} champions",
@@ -183,14 +184,8 @@ impl GameEngine {
     pub fn run_to_completion(&mut self) -> Result<Option<u8>> {
         self.start()?;
 
-        while self.state.running && !self.is_finished() {
-            self.tick()?;
-
-            // Apply speed control
-            if self.config.speed > 0 {
-                let delay = Duration::from_millis(1000 / self.config.speed as u64);
-                std::thread::sleep(delay);
-            }
+        while self.tick()? {
+            // Loop continues as long as tick() returns true
         }
 
         self.determine_winner()
@@ -207,6 +202,7 @@ impl GameEngine {
 
         self.state.cycle += 1;
         self.state.last_cycle_time = Instant::now();
+        debug!("Engine ticked. Current cycle: {}", self.state.cycle);
 
         // Execute one cycle of the scheduler
         let should_continue =
@@ -217,6 +213,7 @@ impl GameEngine {
             if self.config.verbose {
                 info!("Game ended at cycle {}", self.state.cycle);
             }
+            debug!("GameEngine: self.state.running set to false because scheduler returned false.");
         }
 
         // Dump memory if requested
@@ -233,19 +230,18 @@ impl GameEngine {
             );
         }
 
-        // Apply speed control
-        if self.config.speed > 0 {
-            let delay = Duration::from_millis(1000 / self.config.speed as u64);
-            std::thread::sleep(delay);
+        // Check for max cycles limit
+        if self.config.max_cycles > 0 && self.state.cycle >= self.config.max_cycles {
+            info!("Reached maximum cycles limit: {}", self.config.max_cycles);
+            self.state.running = false;
+            debug!("GameEngine: self.state.running set to false due to max_cycles.");
         }
 
+        debug!("tick: Returning running: {}", self.state.running);
         Ok(self.state.running)
     }
 
-    /// Check if the game is finished
-    pub fn is_finished(&self) -> bool {
-        !self.state.running || self.state.winner.is_some()
-    }
+    
 
     /// Pause the game
     pub fn pause(&mut self) {

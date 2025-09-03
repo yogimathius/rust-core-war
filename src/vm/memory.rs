@@ -43,6 +43,7 @@ impl Memory {
     /// Normalize an index using IDX_MOD
     ///
     /// This is used for indirect addressing calculations.
+    #[allow(dead_code)]
     fn normalize_index(&self, index: usize) -> usize {
         index % IDX_MOD
     }
