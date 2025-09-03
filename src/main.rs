@@ -7,12 +7,12 @@ use corewar::{Assembler, GameConfig, GameEngine};
 use log::{error, info};
 use std::path::PathBuf;
 use std::process;
-use corewar::ui::app;
+// use corewar::ui::app;
 
 fn main() {
     // Initialize logging
     env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(log::LevelFilter::Debug)
         .init();
 
     // Parse command line arguments

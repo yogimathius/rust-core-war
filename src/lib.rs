@@ -23,7 +23,7 @@ pub mod constants {
     /// Index modulo for memory addressing
     pub const IDX_MOD: usize = 512;
 
-    /// Initial cycle to die value
+    /// Initial cycle to die value (proper Core War standard)
     pub const CYCLE_TO_DIE: u32 = 1536;
 
     /// Cycle reduction amount
