@@ -84,6 +84,27 @@ impl Assembler {
     ///
     /// # Returns
     /// The assembled bytecode, or an error if compilation failed
+    pub fn assemble_string(&self, source: &str) -> Result<Vec<u8>> {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut temp_file = NamedTempFile::new().map_err(|e| CoreWarError::assembler(format!("Failed to create temporary file: {}", e)))?;
+        temp_file.write_all(source.as_bytes()).map_err(|e| CoreWarError::assembler(format!("Failed to write to temporary file: {}", e)))?;
+        let path = temp_file.path();
+
+        let bytecode = self.assemble_file(path, None)?;
+
+        // The temporary file will be deleted when it goes out of scope
+        Ok(bytecode)
+    }
+
+    /// Assemble Redcode source code from a string
+    ///
+    /// # Arguments
+    /// * `source` - The Redcode source code
+    ///
+    /// # Returns
+    /// The assembled bytecode, or an error if compilation failed
     pub fn assemble_source(&self, source: &str) -> Result<Vec<u8>> {
         if self.verbose {
             println!("Lexical analysis...");
