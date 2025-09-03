@@ -5,6 +5,8 @@
 pub mod app;
 pub mod components;
 pub mod input;
+pub mod effects;
+pub mod advanced_memory;
 
 // Re-export commonly used types
 pub use app::App;

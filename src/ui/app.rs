@@ -4,6 +4,7 @@
 /// of the Core War terminal visualization.
 use crate::error::Result;
 use crate::vm::{Memory, Process};
+use crate::ui::advanced_memory::AdvancedMemoryGrid;
 use crate::GameEngine;
 use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -34,6 +35,8 @@ pub struct App<'a> {
     pub selected_process_id: Option<u32>,
     /// Reference to the game engine
     pub engine: &'a mut GameEngine,
+    /// Advanced memory visualization
+    pub advanced_memory: AdvancedMemoryGrid,
 }
 
 /// Different view modes for the UI
@@ -61,6 +64,7 @@ impl<'a> App<'a> {
             view_mode: ViewMode::Normal,
             selected_process_id: None,
             engine,
+            advanced_memory: AdvancedMemoryGrid::new(),
         }
     }
 
@@ -75,7 +79,64 @@ impl<'a> App<'a> {
     /// `Ok(())` if successful, error otherwise
     pub fn update(&mut self) -> Result<()> {
         if !self.paused {
+            // Store old memory state for comparison
+            let old_memory: Vec<u8> = (0..self.engine.memory().size())
+                .map(|i| self.engine.memory().read_byte(i))
+                .collect();
+            
+            // Execute VM tick
             self.engine.tick()?;
+            
+            // Detect memory changes and update visualization
+            for addr in 0..self.engine.memory().size() {
+                let old_byte = old_memory[addr];
+                let new_byte = self.engine.memory().read_byte(addr);
+                
+                if old_byte != new_byte {
+                    // Memory changed - update heat map and create visual effects
+                    if let Some(owner_id) = self.engine.memory().get_owner(addr) {
+                        self.advanced_memory.update_memory_access(addr, owner_id);
+                        
+                        // Create particle effect for dramatic memory changes
+                        if (old_byte == 0 && new_byte != 0) || (old_byte != 0 && new_byte == 0) {
+                            // Major change - create explosion effect
+                            for process in self.engine.processes() {
+                                if process.champion_id == owner_id {
+                                    self.advanced_memory.process_death(process);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        // Even if no owner, still update heat map to show activity
+                        self.advanced_memory.update_memory_access(addr, 1);
+                    }
+                }
+            }
+            
+            // Update advanced memory grid with real battle data
+            self.advanced_memory.update();
+            
+            // Update process positions for trail visualization and force continuous visual activity
+            for process in self.engine.processes() {
+                self.advanced_memory.update_process_position(process);
+                
+                // Force heat map activity around the process position to make effects visible
+                self.advanced_memory.update_memory_access(process.pc, process.champion_id);
+                
+                // Add some activity in a larger radius around the process for more visual impact
+                for offset in 0..8 {
+                    let addr = (process.pc + offset * 10) % self.engine.memory().size();
+                    self.advanced_memory.update_memory_access(addr, process.champion_id);
+                }
+                
+                // Add some random sparkle effects around active processes
+                let cycle = self.engine.get_stats().cycle;
+                if cycle % 5 == 0 {  // Every 5 cycles
+                    let sparkle_addr = (process.pc + (cycle as usize * 7)) % self.engine.memory().size();
+                    self.advanced_memory.update_memory_access(sparkle_addr, process.champion_id);
+                }
+            }
         }
         Ok(())
     }
@@ -93,19 +154,26 @@ impl<'a> App<'a> {
         &self,
         frame: &mut ratatui::Frame,
     ) -> Result<()> {
-        let grid_width = 32;
-        let grid_height = 192;
-
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
             .split(frame.size());
 
-        // Render memory grid
-        let mem_lines = render_memory_grid(self.engine.memory(), &self.engine.processes(), grid_width, grid_height);
-        let memory = Paragraph::new(mem_lines)
-            .block(Block::default().borders(Borders::ALL).title("Memory"));
-        frame.render_widget(memory, chunks[0]);
+        // Render advanced memory visualization
+        let memory_area = chunks[0];
+        let buf = frame.buffer_mut();
+        
+        // Get process references for visualization
+        let process_refs: Vec<&Process> = self.engine.processes().into_iter().collect();
+        
+        // Use advanced memory grid with real battle data
+        self.advanced_memory.render(
+            self.engine.memory(),
+            &process_refs,
+            self.engine.champions(),
+            memory_area,
+            buf
+        );
 
         // Stats/dashboard
         let mut stats = format!(
@@ -205,6 +273,7 @@ impl Default for App<'_> {
 }
 
 /// Map champion ID to a color
+#[allow(dead_code)]
 fn champion_color(id: Option<u8>) -> Color {
     match id {
         Some(1) => Color::Red,
@@ -216,6 +285,7 @@ fn champion_color(id: Option<u8>) -> Color {
 }
 
 /// Render the memory grid as a string with color info
+#[allow(dead_code)]
 fn render_memory_grid(
     memory: &Memory,
     processes: &[&Process],
@@ -335,6 +405,11 @@ pub fn run_terminal_ui_with_vm(
         }
         if app.should_quit {
             break;
+        }
+        // Apply speed control for visual mode
+        if app.speed > 0 {
+            let delay = Duration::from_millis(1000 / app.speed as u64);
+            std::thread::sleep(delay);
         }
     }
     disable_raw_mode()?;
