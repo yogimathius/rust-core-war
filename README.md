@@ -1,29 +1,29 @@
 # Rust Core War
 
-Core War implementation in Rust with terminal visualization, plus a C subproject under `core-war-c/`.
+Core War implementation in Rust with terminal visualization
 
-## Structure
+## Scope and Direction
+- Project path: `games-education/rust-core-war`
+- Primary tech profile: Rust
+- Audit date: `2026-02-08`
 
-- `src/` - Rust VM and game logic
-- `core-war-c/` - C implementation and tests
-- `examples/`, `benches/`, `tests/` - Supporting assets
-
-## Current Status
-
-- Rust crate and C subproject present with detailed specs and plans.
-- Implementation not verified in this audit.
-- Operational estimate: **40%** (substantial scaffold, unverified runtime).
+## What Appears Implemented
+- Detected major components: `src/`, `core-war-c/`
+- No clear API/controller routing signals were detected at this scope
+- Cargo metadata is present for Rust components
 
 ## API Endpoints
+- No explicit HTTP endpoint definitions were detected at the project root scope
 
-- None. CLI/terminal application.
+## Testing Status
+- `cargo test` appears applicable for Rust components
+- This audit did not assume tests are passing unless explicitly re-run and captured in this session
 
-## Tests
-
-- Rust tests/benches and C tests exist but were not run (avoided long Rust builds).
+## Operational Assessment
+- Estimated operational coverage: **39%**
+- Confidence level: **medium**
 
 ## Future Work
-
-- Validate VM correctness with test suites.
-- Document CLI usage and battle formats.
-- Add automated CI for Rust and C builds.
+- Document and stabilize the external interface (CLI, API, or protocol) with explicit examples
+- Run the detected tests in CI and track flakiness, duration, and coverage
+- Validate runtime claims in this README against current behavior and deployment configuration
